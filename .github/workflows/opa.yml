@@ -43,8 +43,16 @@ jobs:
       - name: Run tests
         run: opa test -v ./src/
 
+      # --threshold still gates the step (the shell runs with pipefail), while
+      # jq trims the ~600-line JSON report to the percentage, listing any
+      # uncovered file:line ranges only if coverage drops.
       - name: Coverage
-        run: opa test --coverage --threshold 100 ./src/
+        run: |
+          opa test --coverage --threshold 100 ./src/ | jq -r '
+            "coverage: \(.coverage)%",
+            ( .files | to_entries[] | select(.value.not_covered != null)
+              | .key as $f | .value.not_covered[]
+              | "  \($f) uncovered: \(.start.row)\(if .start.row != .end.row then "-\(.end.row)" else "" end)" )'
 
       # Run even when check/tests/coverage fail, so lint feedback surfaces in
       # the same run instead of on a later push — but skip on cancellation.
