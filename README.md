@@ -142,3 +142,17 @@ regal lint --format github ./src/
 `.github/workflows/opa.yml` runs on every push and pull request to `main` and
 enforces all four checks above — a drop below 100% line coverage or any Regal
 violation fails the build.
+
+## Building a bundle
+
+Package the policy into a distributable OPA bundle. `src/.manifest` declares
+`credit` as the bundle root, and `-e credit/decision` records the decision rule
+as the entrypoint:
+
+```sh
+opa build -b ./src/ --ignore '*_test.rego' -e credit/decision -o bundle.tar.gz
+```
+
+`--ignore '*_test.rego'` keeps test files out of the bundle (they sit outside
+the `credit` root and would otherwise be rejected). The resulting
+`bundle.tar.gz` can be loaded by an OPA agent or served from a bundle server.
