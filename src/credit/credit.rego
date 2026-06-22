@@ -160,6 +160,9 @@ reasons := set() if outcome == "approve"
 
 # --- Final decision object -------------------------------------------------
 
+# METADATA
+# description: final decision object returned to the caller
+# entrypoint: true
 decision := {
 	"outcome": outcome,
 	"dti": round(dti * 100) / 100,

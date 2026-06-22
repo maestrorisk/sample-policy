@@ -1,0 +1,53 @@
+name: Validate OPA policies
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - ".github/workflows/opa.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - ".github/workflows/opa.yml"
+
+# Cancel an in-progress run when a newer commit
+# is pushed to the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  policy-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: 1.17.1
+
+      - name: Set up Regal
+        uses: open-policy-agent/setup-regal@v1
+        with:
+          version: 0.41.1
+
+      - name: Check policy
+        run: opa check --strict ./src/
+
+      - name: Run tests
+        run: opa test -v ./src/
+
+      - name: Coverage
+        run: opa test --coverage --threshold 100 ./src/
+
+      # Run even when check/tests/coverage fail, so lint feedback surfaces in
+      # the same run instead of on a later push — but skip on cancellation.
+      - name: Lint Rego with Regal
+        if: ${{ !cancelled() }}
+        run: regal lint --format github ./src/
