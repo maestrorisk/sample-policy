@@ -54,6 +54,21 @@ jobs:
               | .key as $f | .value.not_covered[]
               | "  \($f) uncovered: \(.start.row)\(if .start.row != .end.row then "-\(.end.row)" else "" end)" )'
 
+      # Verify the distributable bundle assembles: catches a broken .manifest
+      # root, a bad -e entrypoint, or a test file leaking past --ignore. Mirrors
+      # the documented build command, so CI also guards it from drifting. Nothing
+      # is published — the artifact is discarded when the runner exits.
+      - name: Build bundle
+        run: opa build -b ./src/ --ignore '*_test.rego' -e credit/decision -o bundle.tar.gz
+
+      # Smoke-test the compiled bundle end-to-end: load it (not the source tree)
+      # and confirm the entrypoint still resolves to a decision. --fail exits
+      # non-zero if the result is undefined.
+      - name: Verify bundle evaluates
+        run: |
+          echo '{"applicant":{"age":40,"credit_score":780,"annual_income":120000,"employment_status":"employed","existing_monthly_debt":500},"loan":{"amount":100000,"term_months":120}}' \
+            | opa eval -b bundle.tar.gz -I 'data.credit.decision' --fail --format pretty
+
       # Run even when check/tests/coverage fail, so lint feedback surfaces in
       # the same run instead of on a later push — but skip on cancellation.
       - name: Lint Rego with Regal
