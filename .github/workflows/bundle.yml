@@ -1,0 +1,64 @@
+name: Bundle policy
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: 1.17.1
+
+      # Fail fast on syntax/type errors before we spend time bundling.
+      - name: Check policy
+        run: opa check --strict .
+
+      - name: Run tests
+        run: opa test . -v
+
+      # Bundle the policy only — test files are excluded so they don't ship.
+      # The revision stamps the git SHA into .manifest for traceability.
+      - name: Build bundle
+        run: opa build -b . --ignore '*_test.rego' -r "${{ github.sha }}" -o bundle.tar.gz
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-bundle
+          path: bundle.tar.gz
+          if-no-files-found: error
+
+  # Publish the bundle as a GitHub Release asset, but only for v* tags.
+  release:
+    needs: bundle
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download bundle artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: policy-bundle
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${{ github.ref_name }}"
+          bundle.tar.gz
+          --repo "${{ github.repository }}"
+          --title "${{ github.ref_name }}"
+          --generate-notes
