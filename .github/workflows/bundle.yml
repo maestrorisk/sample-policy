@@ -34,7 +34,7 @@ jobs:
         run: opa build -b . --ignore '*_test.rego' -r "${{ github.sha }}" -o bundle.tar.gz
 
       - name: Upload bundle artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: policy-bundle
           path: bundle.tar.gz
@@ -43,11 +43,30 @@ jobs:
   # Publish the bundle as a GitHub Release asset, but only for v* tags.
   release:
     needs: bundle
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    # Configure this environment in repo settings with required reviewers
+    # to require manual approval before publishing a release.
+    environment: production
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
+      - name: Check out tagged commit
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Ensure tag commit is on main
+        run: |
+          git fetch origin main --depth=1
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"; then
+            echo "Tag ${GITHUB_REF_NAME} does not point to a commit on main."
+            exit 1
+          fi
+
       - name: Download bundle artifact
         uses: actions/download-artifact@v8
         with:
