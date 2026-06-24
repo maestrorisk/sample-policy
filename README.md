@@ -7,7 +7,7 @@ deterministic — same input, same decision — so it can run anywhere OPA does:
 as a sidecar, a library (Wasm/Go), or a server.
 
 ## Layout
-
+The layout.
 
 | Path | Purpose |
 | --- | --- |
