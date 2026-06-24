@@ -8,6 +8,7 @@ as a sidecar, a library (Wasm/Go), or a server.
 
 ## Layout
 
+
 | Path | Purpose |
 | --- | --- |
 | `src/credit/credit.rego` | The decision policy (`package credit`). |
