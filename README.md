@@ -8,6 +8,7 @@ as a sidecar, a library (Wasm/Go), or a server.
 
 ## Layout
 The layout.
+2
 
 | Path | Purpose |
 | --- | --- |
